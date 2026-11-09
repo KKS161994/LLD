@@ -1,0 +1,83 @@
+# Design a Rate Limiter (LLD)
+# Interview level: Amazon SDE-3 / Uber Senior SWE
+# Duration: 60 minutes
+# Language: Java
+
+# We'll follow our same interview structure:
+# Phase	Duration
+# Requirements and clarification	5 min
+# Domain modeling + class design	15 min
+# Independent Java implementation	35 min
+# Testing and evaluation	5 min
+
+# We'll begin with an in-memory rate limiter, focusing on correctness, concurrent requests, and extensibility. Distributed Redis-based rate limiting can come afterward as a separate production-design discussion.
+
+# Our sequence will be:
+# 1. Finish Monitoring & Alerting System.
+# 2. Rate Limiter LLD.
+# 3. Monitoring & Alerting System at large scale — HLD discussion.
+# Tomorrow, you can simply say "Resume Monitoring LLD", and we'll continue from the exact pending concurrency implementation.
+
+# Understand
+
+# Rate Limiter
+
+# Actor
+RateLimiterService
+
+Request
+
+Policy(Algorithm which we are preferring)
+
+Owner of service 
+
+Rate limiter could be based on request from particular user
+ip or serbvice
+
+# Flows
+
+1: Owner -> configures rate limiter ->  application for service user and ip 
+
+2: Client(could be service , user, ip ) -> rate limiter service
+-> verify if service user or ip exceeded the quota
+
+3: Rate limiter policies should be configurable like nummber of request should nt exceed threhold value
+
+# constraint or invariant
+
+client-> rate limiter service -> service user or IP and try to match it again set of configured rules
+
+Constraint
+We do expect request to be in order of time stamps 
+each request should contain(client id , timestamp)
+we are expecting one request at time 
+
+
+
+
+Model and Design
+
+Application
+Service Quota 
+Max IP request
+Ip level request sofar
+IP bucket 
+Max User request 
+User request so far
+User bucket
+Max Service request 
+Service request so far
+Service bucket
+
+allowRequest()
+
+RateLimiterService
+
+map<appId, Application>
+
+allowRequest(application id, user id, 
+service id, caller service id,)
+
+
+
+

@@ -1,0 +1,104 @@
+LLD Mock Interview #1 — Cinema Hall Scheduler
+Amazon SDE-3 / Senior SWE
+ 60 minutes
+Problem statement
+Design an object-oriented Cinema Hall Scheduling and Ticket Booking System.
+
+The system should allow cinema operators to manage movie screenings and customers to book seats for available shows.
+
+Your solution should be implemented in Java, with emphasis on clean object-oriented design, correctness, extensibility, and concurrency.
+Phase 1 — Requirements & Flows (8 minutes)
+You are the candidate. I'm the interviewer.
+
+Start by asking your requirement clarification questions. I'll answer them as an interviewer would, without revealing entities, algorithms, or design choices.
+
+Over to you.
+
+Understand
+Who are actor 
+who does what
+what are constraints
+if possible come up with happy and negative flows to implement
+Persistence 
+Multithreading
+
+Assumption
+
+Actors
+Halls Lets consider 1 hall for now which will have multiple screen
+Screen Will have multiple seats Skip life cycle
+Movies Screen timing Multiple screen can play same movie at same time 
+OPerator will add remove or update moviews
+Customer Who decides seat it could be one one or multiple seat
+Booking Booking id, screen , time , num of people, customer id
+
+Flows
+Flow
+1: Customer selects the date and movie
+2: List of seats 
+3: Customer selects the list of seats according to prefs and booking is returned with booking id
+Select movie + date → View shows (screen + time) → Select show → View seats → Select seats → Book
+Operator can schedule a movie
+
+customer can cancel a booking
+Skip update for now
+
+Also, the five-minute timeout must be enforced even if the customer never returns to complete the booking.
+If seat is booked the new booking wont be allowed
+
+
+
+Flows
+
+Date and movie -> Screen are shown -> on screen selection 
+-> seats are shown -> on selection of seats and screen booking is made
+
+Model
+Screen
+- seats
+Seats
+- Available , In Progress, Booked
+Customer
+- id
+Booking 
+- booking id, screen id, time , movie , customer id , number of customer, list of seats
+// Skipping operator who will manage movies, seats,  
+Booking History
+- booking id, screen, movie , timing,customer id ,number of customer, seats lists
+ShowScreen 
+
+
+Design
+Seat-> Available, in booking , booked
+Screen -> id,List<Seat>
+Show -> id, date, time, movie , an instance of screen where seats are cloned 
+Customer id name
+Booking -> booking id, screen id, time , movie , customer id , number of customer, list of seats
+Booking History
+- booking id, screen, movie , timing,customer id ,number of customer, seats lists
+Implement
+Constraint
+
+enum status (AVAILABE, IN BOOKING, BOOKED)
+
+class Seat
+- number
+- status
+
+class Screen
+- List<Seat>
+- number
+
+class ShowCatalogue
+- Map<time, Map<Movie,List<Screen>>
+getShows(time,movie) -> List<Screen>
+
+
+class Show
+- time, movie, screen, list<seats>
+
+class 
+
+class Booking
+- booking id, show id, long customer id,     List<String> seatIds, BookingStatus status
+

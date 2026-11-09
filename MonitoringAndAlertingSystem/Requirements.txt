@@ -1,0 +1,257 @@
+# LLD Mock Interview #2 — Monitoring & Alerting System
+# Level: Amazon SDE-3 / Uber Senior SWE
+# Duration: 60 minutes
+# Language: Java 17+
+
+# Problem statement
+# Design an in-memory Monitoring & Alerting System.
+
+# The system receives metrics from applications and services, evaluates configured alert rules, and generates alerts when conditions are violated.
+
+# For example, a service reports CPU usage, memory consumption, or error rates. The system should determine whether an alert needs to be triggered.
+
+# Your design should be object-oriented, extensible, and support concurrent operations.
+# Interview structure
+# Phase	Time	Your responsibility
+# 1. UNDERSTAND	0–7 min	Actors → Actions → Flows → States → Constraints → Failures → Boundaries
+# 2. MODEL	7–15 min	Requirements → Entities & Relationships → State & Ownership → Behavior & Responsibilities → Lifecycles & Invariants
+# 3. DESIGN	15–25 min	Ownership → Contracts → Collaboration → Storage → Correctness
+# 4. IMPLEMENT	25–50 min	Independently implement core Java workflows
+# 5. VALIDATE	50–60 min	Tests, edge cases, concurrency, tradeoffs
+
+# Phase 1 — UNDERSTAND
+# Time budget: 7 minutes
+
+# Your task is to discover the requirements, not design the classes yet.
+
+# You may ask all your clarification questions together. I will answer them as the interviewer, then identify any important requirement dimensions you missed.
+
+# Interviewer: "You have the problem statement. What would you like to clarify before beginning your design?"
+
+
+# Actor
+
+# Service application etc
+# Lets say applications who will send logs
+# Then Alerting service who will be sending notification to application
+# in case of voilation
+# Services can configure what alerting  system policies they want 
+
+# Actions 
+- Service initialise themselves 
+- Service configures policies and whom to send alert to in case of 
+    voilation
+- Service send metrics (can be different types like list of 
+    metric or single metric,Ideally JSON object should be good)
+- Alerting system asynchronously analyses metrics against confugrue policies 
+    and alerts for error 
+
+
+Flows
+- Service configures policies and whom to send alert to in case of 
+    voilation
+- Service send metrics (can be different types like list of 
+    metric or single metric,Ideally JSON object should be good)
+- Alerting system asynchronously analyses metrics against confugrue policies 
+    and alerts for error 
+
+States
+- Policy
+    - metric 
+    - operation(operator , value)
+
+- Service 
+    - policy for certain metrics 
+    - alerting system (could be part of policy)
+
+- Monitoring system
+    Map<id , service>
+    - initialise()
+    - addLog()
+    - verifyLogForAlertForService
+    - 
+
+
+- Alerting service 
+    - alertClient(client, notification template)
+    - 
+
+
+
+# Flows
+# Service initialise themselves 
+# 
+
+# Actors -> Action→ Flows → States → Constraints → Failures → Boundaries
+
+# Actors
+- Service owner
+- Application
+- Notification provider
+
+# Actions
+- Service owner
+    Register application/service
+    Configures or updates existing policy
+
+- Application
+    Sends metrics[service id, mertric id, ]
+    Send metric periodically
+
+- States    
+So the states in this will
+
+Application - registered disabled
+Metrics healthy firing
+Notification delivered pending failed
+metric  received evaluated 
+
+- Constraints & invariants
+  no duplicate notification for same metric and service
+  no duplicate registration for same service
+  
+
+- Failures 
+  if metric log is invalid error should be thrown
+  if disabled service log is sent it should be sent with in appropriare error 
+  In case of notification failure notification should be tried once   
+  
+
+Partially correct. I'd rate this Phase 1 attempt 6/10 at the Amazon SDE-3 bar. Your actors are correct, and you've identified several important states and failures. But you're missing Flows and Boundaries, and some invariants are incorrectly defined.
+
+Here's how I'd evaluate and correct your answer without introducing Phase 2 or Phase 3 concepts.
+
+## Evaluation
+
+| Area        | Assessment       | What's missing or incorrect                                      |
+| ----------- | ---------------- | ---------------------------------------------------------------- |
+| Actors      | &#x20;Correct    | All three relevant actors                                        |
+| Actions     | &#x20;Partial    | Notification actions, rule deletion, alert retrieval if in scope |
+| Flows       | &#x20;Missing    | End-to-end metric evaluation and recovery                        |
+| States      | &#x20;Partial    | HEALTHY/FIRING belongs to rule evaluation, not metrics           |
+| Constraints | &#x20;Partial    | Invariants must be defined per rule and transition               |
+| Failures    | &#x20;Good start | Missing concurrency, out-of-order events, and partial failures   |
+| Boundaries  | &#x20;Missing    | In-memory, single JVM, evaluation and delivery scope             |
+
+## Corrected Phase 1 — Monitoring & Alerting System
+
+### 1. Actors
+
+- Service owner — registers services and configures alert rules.
+- Application — submits metric samples.
+- Notification provider — delivers notifications through email or SMS.
+
+### 2. Actions
+
+Service owner: Register application, configure/update rules, configure notification recipients.
+
+Application: Submit batches of metric samples containing `serviceId`, `metricName`, `value`, and `timestamp`.
+
+System: Validate metrics, evaluate matching rules, detect state transitions, generate alert events, and request notification delivery.
+
+Notification provider: Attempt delivery and report success or failure.
+
+### 3. Flows
+
+Normal alert flow:
+
+`Register service → Configure rule → Receive metric → Validate → Evaluate → HEALTHY to FIRING → Generate alert → Notify`
+
+Recovery flow:
+
+`Receive healthy metric → Evaluate → FIRING to HEALTHY → Allow future alert`
+
+Repeated violation:
+
+`FIRING → Another violating metric → Remain FIRING → No new alert`
+
+### 4. States
+
+| Resource              | States                            | Comment                        |
+| --------------------- | --------------------------------- | ------------------------------ |
+| Application           | REGISTERED, DISABLED              | Only if disabling is supported |
+| Alert rule evaluation | HEALTHY, FIRING                   | Correct owner of alert state   |
+| Notification          | PENDING, DELIVERED, FAILED        | If tracking delivery           |
+| Metric sample         | No persistent lifecycle necessary | Evaluated synchronously        |
+
+### 5. Constraints & Invariants
+
+1. Each registered service must have a unique identity.
+2. Metrics must belong to a valid, enabled service.
+3. Each rule must have valid configuration, including threshold, operator, and recipients.
+4. Each rule independently maintains HEALTHY/FIRING state.
+5. At most one alert event is generated for each transition into FIRING.
+6. Continued violations must not generate additional alert events until recovery.
+7. Concurrent evaluations must preserve these invariants.
+
+Important: We allow multiple rules for the same service and metric, so two rules can legitimately generate two alerts.
+
+### 6. Failures
+
+| Scenario                      | Expected behavior                                                         |
+| ----------------------------- | ------------------------------------------------------------------------- |
+| Invalid metric                | Reject with validation error                                              |
+| Unknown service               | Reject with service-not-found error                                       |
+| Disabled service              | Reject ingestion, if disabling is supported                               |
+| Duplicate registration        | Reject or return existing registration, based on agreed API contract      |
+| Concurrent violating metrics  | Generate only one firing event per rule transition                        |
+| Notification delivery fails   | Record failure; no automatic retry under your proposed one-attempt policy |
+| Out-of-order samples          | Clarify whether evaluation follows arrival order or event timestamps      |
+| One invalid sample in a batch | Clarify whether the entire batch fails or only the invalid sample         |
+
+### 7. Boundaries
+
+For this mock, we have agreed on:
+
+- Single JVM, in-memory implementation.
+- Numeric metric samples.
+- Latest received value evaluation, not rolling averages.
+- Retain recent metrics for 10 minutes.
+- Multiple rules per service and metric.
+- Synchronous rule evaluation.
+- No Kafka, distributed storage, or persistent analytics.
+
+Application
+- id 
+-owner_id
+- map<string, treemap<value,alert_rule>> metric -> threhold-> rule
+Intent is to get nearest matching 
+
+ApplicationService
+    Map<id,application>
+    registerApplication
+    addRuleForApplication
+
+ALertStatus
+    Firing 
+    Healthy
+
+AlertRule
+    metric
+    list<individualrule>
+    
+
+IndividualAlertRule    
+    threshold 
+    operator(Greater than, less than)
+    invoke
+    alertstatus
+     
+
+AlertService
+    notificationProvider
+    alert(value, alert_rule,service_id)
+    private formAlertMessage()
+
+MonitoringService
+    applicationService
+    alertService
+    ingestMetric(applicationid, metric, value,timestamp)
+
+customer ->(register application)-> application service-> application
+customer -> monitorinting service -> application service to get li
+
+
+
+
+

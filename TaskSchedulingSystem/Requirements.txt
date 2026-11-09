@@ -1,0 +1,153 @@
+# Phase 1 — Requirements clarification
+
+# Interviewer: "Design a Task Scheduling System. 
+# Before you begin designing, what requirements and constraints would you like to clarify?"
+
+
+
+Task Scheduling system
+
+1: We are skipping login
+2: Client can schedule task
+3: Task could be repeating or one time 
+4: When we talk about task we can now say he or she will pass thread 
+   and the time at which task need to execute
+5: Can same task be scheduled twice Something to think of 
+We can use hash of user id and task
+6: What if task fail-> acknowledge  
+7: Should we include task validaiton
+8: Rate limiter for user is out of scope 
+9: Do we consider task execution time 
+10: Do we need to consider priority of task
+Say at 10th second task are overflowed from previous second 
+And all task are p1 while task at 10 th sec are P0
+so we need to execute P0 first 
+
+# Phase 1 — Interviewer answers
+# #	Your clarification	Interviewer decision
+# 1	Skip login?	Yes. Authentication and authorization are out of scope.
+# 2	Can clients schedule tasks?	Yes. Clients can submit tasks, inspect their status, and cancel pending tasks.
+# 3	One-time or repeating?	Both. Support one-time execution and fixed-interval recurring execution.
+# 4	Does the client pass a thread?	No. The client provides a task definition or executable action and its schedule. The scheduler owns thread allocation and worker execution.
+# 5	Can the same task be scheduled twice?	Yes. Two submissions of the same action create two independent task instances. Each receives a unique task ID.
+# 6	What happens on failure?	Track failure and support configurable retries. Acknowledgment of successful execution is required.
+# 7	Task validation?	Yes. Validate scheduling parameters, priority, and required task information.
+# 8	Rate limiting?	Out of scope.
+# 9	Task execution duration?	Yes. Tasks can take different amounts of time. Workers remain occupied until execution finishes.
+# 10	Task priority?	Yes. Support P0, P1, and P2, with P0 highest.
+
+# Important clarification about priority
+# Your scenario is valid.
+
+# Suppose two workers are available, and at second 10 we have:
+# Task	Scheduled time	Priority	Status
+# T1	8	P1	Waiting
+# T2	9	P1	Waiting
+# T3	10	P0	Waiting
+# T4	10	P0	Waiting
+
+# At second 10, T3 and T4 should be dispatched before T1 and T2, assuming all are eligible and no task has already started.
+
+# However, if T1 is already running, we do not interrupt it when T3 arrives.
+
+# V1 uses non-preemptive priority scheduling.
+
+# This distinction matters because task eligibility, task priority, and worker availability are separate concepts.
+# Requirements you missed
+# Core — Worker capacity
+
+# The scheduler has a configurable fixed-size worker pool. Multiple tasks can execute concurrently, but no more than the worker count.
+
+
+# Core — Task lifecycle
+
+# Track SCHEDULED, RUNNING, COMPLETED, FAILED, and CANCELLED. Retries must also be represented consistently.
+
+
+# Core — Retry policy
+
+# A task may retry after failure, with configurable maximum attempts and a fixed retry delay. Once attempts are exhausted, it becomes terminally failed.
+
+
+# Core — Ordering
+
+# Among eligible tasks with equal priority, dispatch the earliest scheduled task first. Break remaining ties by submission order.
+
+
+# Extension — Durability and crash recovery
+
+# Not required in V1. Assume a single JVM with in-memory state. We can discuss process crashes, duplicate execution, and persistence afterward.
+
+
+Domain Model
+
+TaskType
+OneTime
+RECURRING
+
+
+TaskStatus
+Scheduled
+IN_PROGRESS
+COMPLETED
+FAILED
+
+enum TaskPriority
+HIGH, MEDIUM, LOW
+
+
+Task
+id
+taskType
+task
+time
+retryAttempt
+status
+
+
+TaskService 
+List of tasks 
+addTask()
+upateTask()
+removeTask()
+getTaskStatus
+
+TaskScheduler 
+VirtualExecutor
+Pick task from List of task and schedule it 
+
+
+TaskSchedulerService 
+TaskSechedulor
+TaskService
+addTaskForScheduler()
+removeTaskFromTaskScheduler()
+updateTaskForScheduler()
+getStatusOfTaskForScheduler()
+
+
+Flows
+1: Client adds a task to TaskSchedulerService
+2: TaskSchedulerService adds task to TaskService
+3: TaskSechduler keeps picking task from TaskService
+4: We can use priority queue which will sort by time then priority then order 
+5: Once task is executed it will be rescudeule task if task is reoccuring task
+6: if task fails during execution it can be retried n number of time but not instantly we can add it in queue with time at next sec
+7: If after alltried attemp mark task as failed 
+
+INVARIANTS
+A task cannot be both CANCELLED and RUNNING
+Prevents cancelled tasks from executing
+Running tasks ≤ worker capacity
+Prevents resource exhaustion
+A task cannot start before its eligible time
+Preserves scheduling semantics
+A task executes at most once per attempt
+Prevents duplicate dispatch
+Attempts never exceed configured maximum
+Prevents infinite retries
+Terminal one-time tasks are not rescheduled
+Prevents invalid lifecycle transitions
+Higher-priority eligible tasks are selected first
+Preserves dispatch ordering
+
