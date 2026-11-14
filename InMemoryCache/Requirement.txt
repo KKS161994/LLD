@@ -54,6 +54,13 @@ Completed at 10 minutes
 
 
 
+Operation	            LRU	                                FIFO
+Insert new key	        Becomes most recently used	        Becomes newest entry
+get() existing key	    Updates recency	                    Does not change order
+put() existing key	    Updates recency	                    Moves key to newest position
+remove()	            Removes from ordering	            Removes from ordering
+Eviction	            Removes least recently used	        Removes oldest entry in current FIFO order
+
 flows
 
 
@@ -86,12 +93,10 @@ Hence synchronised is very  importasnt
 Phase 3 — Class and interface design
 
 CacheKey 
-
 Object key 
 - long timeStamp 
 override equals and hashCode
 order
-recency
 
 Cache value
 Object
@@ -110,14 +115,24 @@ interface EvictionPolicy<K> {
     K evictCandidate();
 }
 
-LRUEvictionPolicy
+LRUEvictionPolicy implement EvictionPolicy
 
-FIFO EvictionPolicy
+
+
+FIFO EvictionPolicy implement EvictionPolicy
+
+
 
 InMemoryCache
 constructor for policy and capacity
-
 get()
 put()
 remove()
 size()
+
+
+38:44
+
+
+
+

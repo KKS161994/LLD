@@ -397,7 +397,7 @@ public class Solution {
         void put(Object cacheKey, Object value, int TTL) {
             CacheKey key = new CacheKey(cacheKey);
             CacheEntry<Object> cacheValue = new CacheEntry<Object>(value,
-                    TTL != 0 ? Long.MAX_VALUE : TTL + getCurrentTime());
+                    TTL == 0 ? Long.MAX_VALUE : TTL + getCurrentTime());
             if (map.containsKey(key) || map.size() != capacity) {
                 map.put(key, cacheValue);
                 evictionPolicy.onInsert(key);

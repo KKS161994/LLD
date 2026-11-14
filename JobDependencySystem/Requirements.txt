@@ -1,0 +1,99 @@
+Problem statement:
+
+Design an in-memory system that executes jobs according to their dependencies.
+
+For example:
+Job A ──→ Job C ──→ Job E
+              ↑
+Job B ────────┘
+
+Job D (independent)
+
+
+A job can execute only after its required predecessor jobs have completed successfully.
+
+This is distinct from our previous Task Scheduler, which focused on execution time, priority, and retries. Here the central challenge is dependency management.
+
+We'll follow the same 60-minute mock format, with you driving requirements, design, and Java implementation.
+
+Phase 1: Ask your clarification questions as the interviewer would expect. I'll answer them together without revealing the solution.
+
+Productionization of earlier LLDs stays in the backlog.
+
+Actor 
+
+CLient w
+
+
+Requirement
+
+1: Job will be submitted as workflow
+2: Each job in workflow can be intradependent ie only inside workflow itself 
+3: Each job will have unique identity
+4: If cycle exist between job we need to tell system 
+5: Is there upper limit to max concurrent workflows and jobs Max 4 (either across workflows or jobs)
+6: Job(id, dependencies, task ) will be submitted Yes can fail
+7: Can jobs fail if yes do we need to care about retries and policy 
+8: Can workflow be configured to run more than once 
+9: If execution dependency is not present i will assume its an error 
+10: Workflow doesnt depend on workflow
+
+Last question is there preiority to which workflow runs 1 
+
+say a workflow comes in picture and another workflow is already running
+do we need to prioritise first or should be efficiently use 4 cores if at
+time only 2 can run in paralle for workflow 1 then we need think about workflow
+2 whiy to wait for workflow 2 to finish
+Excellent question. You're distinguishing workflow scheduling from job scheduling, which is an important architectural decision.
+Interviewer answer
+For this exercise:
+- No workflow priority. All workflows have equal priority.
+- No strict FIFO execution between workflows. Workflow 2 does not need to wait until Workflow 1 finishes.
+- Maximum 4 concurrently executing jobs globally, shared across all workflows.
+- Work-conserving scheduling: If execution capacity is available and an eligible job exists in any workflow, the executor should be able to schedule it.
+- No strict fairness guarantee between workflows for now.
+
+Do we need to mark job as failed or comepleted or workflow as passed or completed ideally it should be both
+Yes. We need to track both job-level and workflow-level status. Your reasoning is correct because they answer different questions.
+- Job status: What happened to this particular job?
+- Workflow status: What is the overall outcome of this workflow execution?
+- remove an exisint workflow 
+
+
+Job 
+id 
+dependencies
+task
+job status 
+workflow id
+
+
+Job Status 
+Created, scheduled , processing, failed , completed, skipped
+
+workflow
+id
+Set of jobs
+status
+
+Workflow status 
+Created , scheduled,progress, failed, completed, skipped 
+
+
+WorkFLow Scheduler
+Map<workflowid, set<jobs>>
+int capacity
+addWorkflow()
+remove()
+cancelWorkflow()
+
+
+WorkFlow executor 
+Single Queue  
+Graph for workflow(Map of worflow id, to graph )
+submitWorkFLow()
+
+
+client -> workflow scheduler -> work flow executor
+
+
